@@ -5,17 +5,48 @@ describe "Static pages" do
   subject { page }
   
   describe "Home page" do
-    before { visit root_path }
-  
+    before do
+      visit root_path
+    end
+
     it { should have_selector('h1', text: 'Sample App') }
   	it { should have_selector('title', text: full_title('')) }
     it { should_not have_selector('title', text: '| Home') }
+=begin
+    describe "for signed-in users" do
+      let(:user) { FactoryGirl.create(:user) }
+
+      before(:all) do
+        Micropost.delete_all
+        User.delete_all #Hacky solution here, to the persistence of integration test objects.
+        60.times do 
+          FactoryGirl.create(:micropost, user: user, content: "Lorem ipsum")
+        end
+        sign_in user
+        visit root_path
+      end
+      after(:all)  { Micropost.delete_all }
+
+      it "should render the user's feed" do
+        user.feed.paginate(page: 1).each do |item|
+          page.should have_selector("li##{item.id}", text: item.content)
+        end
+
+#        item = user.feed.paginate(page: 2).first
+ #       page.should_not have_selector("li##{item.id}", text: item.content)
+      end
+
+#      it "should paginate" do
+ #       page.should have_selector('')
+  #    end
+    end
+=end
 
     describe "for signed-in users" do
       let(:user) { FactoryGirl.create(:user) }
       before do
-        FactoryGirl.create(:micropost, user: user, content: "Lorem ipsum")
-        FactoryGirl.create(:micropost, user: user, content: "Dolor sit amet")
+        FactoryGirl.create(:micropost, user: user, content: "Lorem")
+        FactoryGirl.create(:micropost, user: user, content: "Ipsum")
         sign_in user
         visit root_path
       end
@@ -24,6 +55,17 @@ describe "Static pages" do
         user.feed.each do |item|
           page.should have_selector("li##{item.id}", text: item.content)
         end
+      end
+
+      describe "follower/following counts" do
+        let(:other_user) { FactoryGirl.create(:user) }
+        before do
+          other_user.follow!(user)
+          visit root_path
+        end
+
+        it { should have_link("0 following", href: following_user_path(user)) }
+        it { should have_link("1 followers", href: followers_user_path(user)) }
       end
     end
   end
